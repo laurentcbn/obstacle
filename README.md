@@ -133,4 +133,4 @@ MIT — do whatever you want with it.
 
 ---
 
-*Built by Fred // CBN*
+*Built by CBN*
