@@ -6,6 +6,18 @@ A 6-track, 16-step drum machine and melodic sequencer with a dark web-based UI, 
 
 ---
 
+## 📦 Download (Prebuilt Release)
+
+If you don’t want to build from source, you can download the precompiled version:
+
+👉 https://github.com/laurentcbn/obstacle/releases/tag/1.0.0
+
+1. Download the **`release.zip`** file  
+2. Extract the archive  
+3. Install the Standalone app or AU plugin (see *Install* section below)
+
+---
+
 ## Features
 
 - **6 tracks** — Kick, Snare, Hihat, Bass, Lead, Pad
