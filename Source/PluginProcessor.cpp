@@ -76,7 +76,12 @@ ObstacleProcessor::ObstacleProcessor()
             decRange[t][2]));
     }
 
-    buildDefaultPattern();
+    // Pattern A = default, B-H = empty (Pattern constructor fills with false/0)
+    buildDefaultPattern(0);
+
+    // Song chain: all slots point to pattern A, 1 repeat each
+    for (auto& slot : songChain)
+        slot = { 0, 1 };
 
     for (int t = 0; t < NUM_TRACKS; ++t) midiActiveNote[t] = -1;
 }
@@ -84,81 +89,83 @@ ObstacleProcessor::ObstacleProcessor()
 // ─────────────────────────────────────────────────────────────────────────────
 //  Default pattern: hypnotic minimal techno, A minor
 // ─────────────────────────────────────────────────────────────────────────────
-void ObstacleProcessor::buildDefaultPattern()
+void ObstacleProcessor::buildDefaultPattern(int patIdx)
 {
-    for (auto& row : steps)     row.fill(false);
-    for (auto& row : stepNotes) row.fill(0);
+    auto& pat = patterns[patIdx];
+    for (auto& row : pat.steps)     row.fill(false);
+    for (auto& row : pat.stepNotes) row.fill(0);
 
     // KICK — syncopated 4/4
-    for (int s : { 0, 4, 10, 12 }) steps[KICK][s] = true;
+    for (int s : { 0, 4, 10, 12 }) pat.steps[KICK][s] = true;
 
     // SNARE — backbeat
-    steps[SNARE][4]  = true;
-    steps[SNARE][12] = true;
+    pat.steps[SNARE][4]  = true;
+    pat.steps[SNARE][12] = true;
 
     // HIHAT — eighth-note groove
-    for (int s : { 1, 3, 5, 7, 9, 11, 13, 15 }) steps[HIHAT][s] = true;
-    steps[HIHAT][0] = true;
+    for (int s : { 1, 3, 5, 7, 9, 11, 13, 15 }) pat.steps[HIHAT][s] = true;
+    pat.steps[HIHAT][0] = true;
 
     // BASS — Trentemøller style riff in A minor
-    // Original kBassFreqs mapped to scale degrees:
-    // A1=55Hz→deg0, C2=65.4Hz→deg2, D2=73.4Hz→deg3, E2=82.4Hz→deg4
     const int bassSteps[]  = { 0, 2, 4, 5, 6, 8, 10, 12, 14, 15 };
     const int bassDegrees[]= { 0, 0, 0, 2, 0, 0, 3,  0,  0,  4  };
     for (int i = 0; i < 10; ++i) {
-        steps[BASS][bassSteps[i]]    = true;
-        stepNotes[BASS][bassSteps[i]] = bassDegrees[i];
+        pat.steps[BASS][bassSteps[i]]     = true;
+        pat.stepNotes[BASS][bassSteps[i]] = bassDegrees[i];
     }
 
     // LEAD — sparse ghost notes
-    steps[LEAD][4]  = true;  stepNotes[LEAD][4]  = 0; // A3
-    steps[LEAD][11] = true;  stepNotes[LEAD][11] = 1; // B3
+    pat.steps[LEAD][4]  = true;  pat.stepNotes[LEAD][4]  = 0; // A3
+    pat.steps[LEAD][11] = true;  pat.stepNotes[LEAD][11] = 1; // B3
 
     // PAD — long attack, beat 0 only
-    steps[PAD][0] = true;  stepNotes[PAD][0] = 0; // A2
+    pat.steps[PAD][0] = true;  pat.stepNotes[PAD][0] = 0; // A2
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 void ObstacleProcessor::randomizePattern()
 {
-    for (auto& row : steps)     row.fill(false);
-    for (auto& row : stepNotes) row.fill(0);
+    int patIdx = editPatternIdx.load();
+    auto& pat  = patterns[patIdx];
+
+    for (auto& row : pat.steps)     row.fill(false);
+    for (auto& row : pat.stepNotes) row.fill(0);
 
     // KICK: 4-on-the-floor + random syncopations
-    for (int s : { 0, 4, 8, 12 }) steps[KICK][s] = true;
+    for (int s : { 0, 4, 8, 12 }) pat.steps[KICK][s] = true;
     for (int s = 1; s < 16; s += 2)
-        if (rng.nextFloat() > 0.82f) steps[KICK][s] = true;
+        if (rng.nextFloat() > 0.82f) pat.steps[KICK][s] = true;
 
     // SNARE: bars 4+12 always, occasional ghost
-    steps[SNARE][4] = true; steps[SNARE][12] = true;
+    pat.steps[SNARE][4] = true; pat.steps[SNARE][12] = true;
     for (int s = 0; s < 16; ++s)
-        if (s != 4 && s != 12 && rng.nextFloat() > 0.88f) steps[SNARE][s] = true;
+        if (s != 4 && s != 12 && rng.nextFloat() > 0.88f) pat.steps[SNARE][s] = true;
 
     // HIHAT: 8th-note or 16th-note feel
     bool sixteenth = rng.nextBool();
     for (int s = 0; s < 16; ++s)
-        steps[HIHAT][s] = sixteenth ? (rng.nextFloat() > 0.3f) : (s % 2 == 0);
+        pat.steps[HIHAT][s] = sixteenth ? (rng.nextFloat() > 0.3f) : (s % 2 == 0);
 
     // BASS: sparse melodic line
     for (int s = 0; s < 16; ++s) {
         if (rng.nextFloat() > 0.55f) {
-            steps[BASS][s] = true;
-            stepNotes[BASS][s] = rng.nextInt(7);
+            pat.steps[BASS][s]     = true;
+            pat.stepNotes[BASS][s] = rng.nextInt(7);
         }
     }
 
     // LEAD: very sparse
     for (int s = 0; s < 16; ++s) {
         if (rng.nextFloat() > 0.72f) {
-            steps[LEAD][s] = true;
-            stepNotes[LEAD][s] = rng.nextInt(7);
+            pat.steps[LEAD][s]     = true;
+            pat.stepNotes[LEAD][s] = rng.nextInt(7);
         }
     }
 
     // PAD: every 8 steps
     for (int s : { 0, 8 }) {
-        steps[PAD][s] = true;
-        stepNotes[PAD][s] = rng.nextInt(3); // A, B, or C
+        pat.steps[PAD][s]     = true;
+        pat.stepNotes[PAD][s] = rng.nextInt(3);
     }
 }
 
@@ -190,8 +197,9 @@ void ObstacleProcessor::updateStepTiming()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-void ObstacleProcessor::triggerStep(int step, juce::MidiBuffer& midi, int samplePos)
+void ObstacleProcessor::triggerStep(int step, juce::MidiBuffer& midi, int samplePos, int patIdx)
 {
+    const auto& pat = patterns[patIdx];
     int key = keyParam ? keyParam->get() : 0;
 
     static const int midiChan[NUM_TRACKS] = { 1, 2, 3, 4, 5, 6 };
@@ -199,16 +207,16 @@ void ObstacleProcessor::triggerStep(int step, juce::MidiBuffer& midi, int sample
     // ── MIDI output ───────────────────────────────────────────────────────────
     for (int t = 0; t < NUM_TRACKS; ++t)
     {
-        if (!steps[t][step])            continue;
-        if (trackMuteParam[t]->get())   continue;
+        if (!pat.steps[t][step])          continue;
+        if (trackMuteParam[t]->get())     continue;
 
         int note = 0;
         if      (t == KICK)  note = 36;
         else if (t == SNARE) note = 38;
         else if (t == HIHAT) note = 42;
-        else if (t == BASS)  { int d = juce::jlimit(0,6,stepNotes[BASS][step]); note = kBassBaseMidi[d] + key; }
-        else if (t == LEAD)  { int d = juce::jlimit(0,6,stepNotes[LEAD][step]); note = kLeadBaseMidi[d] + key; }
-        else                 { int d = juce::jlimit(0,6,stepNotes[PAD][step]);  note = kPadBaseMidi[d]  + key; }
+        else if (t == BASS)  { int d = juce::jlimit(0,6,pat.stepNotes[BASS][step]); note = kBassBaseMidi[d] + key; }
+        else if (t == LEAD)  { int d = juce::jlimit(0,6,pat.stepNotes[LEAD][step]); note = kLeadBaseMidi[d] + key; }
+        else                 { int d = juce::jlimit(0,6,pat.stepNotes[PAD][step]);  note = kPadBaseMidi[d]  + key; }
 
         note = juce::jlimit(0, 127, note);
         int velocity = juce::jlimit(1, 127, (int)(trackVolParam[t]->get() * 100.f));
@@ -221,24 +229,24 @@ void ObstacleProcessor::triggerStep(int step, juce::MidiBuffer& midi, int sample
     }
 
     // ── Audio voices ──────────────────────────────────────────────────────────
-    if (steps[KICK][step])  kick.trigger();
-    if (steps[SNARE][step]) snare.trigger();
-    if (steps[HIHAT][step]) hihat.trigger(false);
+    if (pat.steps[KICK][step])  kick.trigger();
+    if (pat.steps[SNARE][step]) snare.trigger();
+    if (pat.steps[HIHAT][step]) hihat.trigger(false);
 
-    if (steps[BASS][step]) {
-        int deg  = juce::jlimit(0, 6, stepNotes[BASS][step]);
+    if (pat.steps[BASS][step]) {
+        int deg  = juce::jlimit(0, 6, pat.stepNotes[BASS][step]);
         float freq = midiToFreq(kBassBaseMidi[deg] + key);
         bass.trigger(freq);
     }
 
-    if (steps[LEAD][step]) {
-        int deg  = juce::jlimit(0, 6, stepNotes[LEAD][step]);
+    if (pat.steps[LEAD][step]) {
+        int deg  = juce::jlimit(0, 6, pat.stepNotes[LEAD][step]);
         float freq = midiToFreq(kLeadBaseMidi[deg] + key);
         lead.trigger(freq);
     }
 
-    if (steps[PAD][step]) {
-        int deg  = juce::jlimit(0, 6, stepNotes[PAD][step]);
+    if (pat.steps[PAD][step]) {
+        int deg  = juce::jlimit(0, 6, pat.stepNotes[PAD][step]);
         float freq = midiToFreq(kPadBaseMidi[deg] + key);
         pad.trigger(freq);
     }
@@ -359,6 +367,9 @@ void ObstacleProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     auto* outR = buffer.getWritePointer(1);
     int numSamples = buffer.getNumSamples();
 
+    // Cache current playing pattern index for this block
+    int curPatIdx = playPatternIdx.load();
+
     for (int i = 0; i < numSamples; ++i)
     {
         // ── Sequencer clock (with swing) ────────────────────────────────────
@@ -366,7 +377,35 @@ void ObstacleProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         {
             seqStep = (seqStep + 1) % 16;
             currentStep.store(seqStep);
-            triggerStep(seqStep, midiBuffer, i);
+
+            // ── Song chain advancement (at step 0) ───────────────────────────
+            if (seqStep == 0)
+            {
+                loopCount++;
+                int slot = playSongSlot.load();
+                bool advance = nextRequested.exchange(false) || (loopCount >= songChain[slot].repeatCount);
+                if (advance)
+                {
+                    loopCount     = 0;
+                    int nextSlot  = slot + 1;
+                    if (nextSlot >= songChainLength)
+                    {
+                        if (songLoopMode)
+                            nextSlot = 0;
+                        else
+                        {
+                            playing.store(false);
+                            nextSlot = 0;
+                        }
+                    }
+                    playSongSlot.store(nextSlot);
+                    curPatIdx = songChain[nextSlot].patternIndex;
+                    playPatternIdx.store(curPatIdx);
+                }
+            }
+
+            triggerStep(seqStep, midiBuffer, i, curPatIdx);
+
             // Swing: alternate step length (even=longer, odd=shorter)
             double swingFactor = (seqStep % 2 == 0) ? (1.0 + swingAmt) : (1.0 - swingAmt);
             sampleCounter += samplesPerStep * swingFactor;
@@ -415,14 +454,26 @@ void ObstacleProcessor::getStateInformation (juce::MemoryBlock& dest)
         stream.writeFloat(trackDecParam[t]->get());
     }
 
-    // Steps + stepNotes
-    for (int t = 0; t < NUM_TRACKS; ++t)
-        for (int s = 0; s < 16; ++s)
-            stream.writeBool(steps[t][s]);
+    // 8 patterns × 6 tracks × 16 steps
+    for (int p = 0; p < NUM_PATTERNS; ++p)
+        for (int t = 0; t < NUM_TRACKS; ++t)
+            for (int s = 0; s < 16; ++s)
+                stream.writeBool(patterns[p].steps[t][s]);
 
-    for (int t = 0; t < NUM_TRACKS; ++t)
-        for (int s = 0; s < 16; ++s)
-            stream.writeInt(stepNotes[t][s]);
+    for (int p = 0; p < NUM_PATTERNS; ++p)
+        for (int t = 0; t < NUM_TRACKS; ++t)
+            for (int s = 0; s < 16; ++s)
+                stream.writeInt(patterns[p].stepNotes[t][s]);
+
+    // Song chain
+    stream.writeInt(songChainLength);
+    stream.writeBool(songLoopMode);
+    for (int sl = 0; sl < NUM_SONG_SLOTS; ++sl) {
+        stream.writeInt(songChain[sl].patternIndex);
+        stream.writeInt(songChain[sl].repeatCount);
+    }
+
+    stream.writeInt(editPatternIdx.load());
 }
 
 void ObstacleProcessor::setStateInformation (const void* data, int sizeInBytes)
@@ -441,20 +492,47 @@ void ObstacleProcessor::setStateInformation (const void* data, int sizeInBytes)
     *keyParam       = stream.readInt();
 
     for (int t = 0; t < NUM_TRACKS; ++t) {
+        if (stream.getNumBytesRemaining() < 4) break;
         *trackVolParam[t]  = stream.readFloat();
         *trackMuteParam[t] = stream.readBool();
         *trackDecParam[t]  = stream.readFloat();
     }
 
-    for (int t = 0; t < NUM_TRACKS; ++t)
-        for (int s = 0; s < 16; ++s)
-            if (stream.getNumBytesRemaining() > 0)
-                steps[t][s] = stream.readBool();
+    // 8 patterns × 6 tracks × 16 steps (bool)
+    for (int p = 0; p < NUM_PATTERNS; ++p)
+        for (int t = 0; t < NUM_TRACKS; ++t)
+            for (int s = 0; s < 16; ++s)
+                if (stream.getNumBytesRemaining() > 0)
+                    patterns[p].steps[t][s] = stream.readBool();
 
-    for (int t = 0; t < NUM_TRACKS; ++t)
-        for (int s = 0; s < 16; ++s)
-            if (stream.getNumBytesRemaining() >= 4)
-                stepNotes[t][s] = stream.readInt();
+    // 8 patterns × 6 tracks × 16 steps (int)
+    for (int p = 0; p < NUM_PATTERNS; ++p)
+        for (int t = 0; t < NUM_TRACKS; ++t)
+            for (int s = 0; s < 16; ++s)
+                if (stream.getNumBytesRemaining() >= 4)
+                    patterns[p].stepNotes[t][s] = stream.readInt();
+
+    // Song chain
+    if (stream.getNumBytesRemaining() >= 4)
+        songChainLength = juce::jlimit(1, NUM_SONG_SLOTS, stream.readInt());
+    if (stream.getNumBytesRemaining() > 0)
+        songLoopMode = stream.readBool();
+    for (int sl = 0; sl < NUM_SONG_SLOTS; ++sl) {
+        if (stream.getNumBytesRemaining() >= 8) {
+            songChain[sl].patternIndex = juce::jlimit(0, NUM_PATTERNS - 1, stream.readInt());
+            songChain[sl].repeatCount  = juce::jlimit(1, 8, stream.readInt());
+        }
+    }
+
+    if (stream.getNumBytesRemaining() >= 4) {
+        int ep = juce::jlimit(0, NUM_PATTERNS - 1, stream.readInt());
+        editPatternIdx.store(ep);
+    }
+
+    // Re-init play state from slot 0
+    int startSlot = 0;
+    playSongSlot.store(startSlot);
+    playPatternIdx.store(songChain[startSlot].patternIndex);
 
     bpm.store(bpmParam->get());
 }

@@ -35,13 +35,16 @@ private:
     std::optional<juce::WebBrowserComponent::Resource>
         getResource (const juce::String& url);
 
-    juce::var buildPatternVar()  const;
-    juce::var buildStateVar()    const;
+    juce::var buildPatternVar(int patIdx)    const; // { tracks:[{pattern,notes}...] }
+    juce::var buildPatternArray(int patIdx) const; // flat [{pattern,notes}...] for randomize
+    juce::var buildStateVar()               const;
     void      setParam (const juce::String& name, float value);
 
     // ── state ─────────────────────────────────────────────────────────────────
-    int  lastStep    = -1;
-    bool uiPlaying   = false;
+    int  lastStep              = -1;
+    bool uiPlaying             = false;
+    int  lastPlayPatternIdx    = -1;
+    int  lastPlaySongSlot      = -1;
 
     // ── WebView (must come AFTER proc in declaration order) ───────────────────
     SinglePageBrowser webView;

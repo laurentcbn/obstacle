@@ -1,7 +1,7 @@
 #include "PluginEditor.h"
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  HTML content (ton design, Web Audio retiré, pont JUCE ajouté)
+//  HTML content
 // ─────────────────────────────────────────────────────────────────────────────
 static juce::String buildHtml()
 {
@@ -23,6 +23,8 @@ static juce::String buildHtml()
     --dim: #1e2030;
     --text: #8899aa;
     --bright: #cce8f0;
+    --pat-edit: #00e5ff;
+    --pat-play: #ff0055;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -86,20 +88,44 @@ static juce::String buildHtml()
     box-shadow: 0 0 10px rgba(0,229,255,0.6);
   }
 
-  .transport { display: flex; justify-content: center; gap: 16px; margin-bottom: 36px; }
+  .transport { display: flex; justify-content: center; gap: 12px; margin-bottom: 28px; flex-wrap: wrap; }
 
   .btn {
     font-family: 'Share Tech Mono', monospace;
     font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase;
-    padding: 10px 28px; border: 1px solid var(--accent);
+    padding: 10px 22px; border: 1px solid var(--accent);
     background: transparent; color: var(--accent); cursor: pointer; transition: all 0.15s;
   }
   .btn:hover { background: rgba(0,229,255,0.08); box-shadow: 0 0 20px rgba(0,229,255,0.2); }
   .btn.active { background: var(--accent); color: var(--bg); box-shadow: 0 0 30px rgba(0,229,255,0.5); }
   .btn.stop-btn { border-color: var(--accent2); color: var(--accent2); }
   .btn.stop-btn:hover { background: rgba(255,0,85,0.08); box-shadow: 0 0 20px rgba(255,0,85,0.2); }
+  .btn.next-btn { border-color: #ff9900; color: #ff9900; padding: 10px 16px; }
+  .btn.next-btn:hover { background: rgba(255,153,0,0.08); box-shadow: 0 0 20px rgba(255,153,0,0.2); }
 
-  .sequencer { border: 1px solid var(--border); padding: 20px; background: var(--surface); margin-bottom: 24px; }
+  /* ── Pattern selector ─────────────────────────────────────────────────── */
+  .pattern-selector {
+    display: flex; justify-content: center; align-items: center;
+    gap: 6px; margin-bottom: 16px;
+  }
+  .pattern-selector .ps-label {
+    font-size: 9px; letter-spacing: 0.4em; color: var(--text);
+    text-transform: uppercase; margin-right: 8px;
+  }
+  .pat-btn {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px; letter-spacing: 0.15em;
+    width: 36px; height: 36px; border: 1px solid var(--border);
+    background: var(--dim); color: var(--text); cursor: pointer;
+    transition: all 0.12s; display: flex; align-items: center; justify-content: center;
+  }
+  .pat-btn:hover { border-color: var(--text); color: var(--bright); }
+  .pat-btn.edit  { border-color: var(--pat-edit); color: var(--pat-edit);
+    box-shadow: 0 0 10px rgba(0,229,255,0.3); background: rgba(0,229,255,0.05); }
+  .pat-btn.play  { outline: 2px solid var(--pat-play); outline-offset: 2px; }
+
+  /* ── Sequencer ────────────────────────────────────────────────────────── */
+  .sequencer { border: 1px solid var(--border); padding: 20px; background: var(--surface); margin-bottom: 16px; }
 
   .track { display: grid; grid-template-columns: 90px 1fr; gap: 12px; align-items: center; margin-bottom: 12px; }
   .track:last-child { margin-bottom: 0; }
@@ -130,13 +156,66 @@ static juce::String buildHtml()
   }
   select.note-sel:focus { outline: none; border-color: var(--accent); }
 
+  /* ── Song chain ───────────────────────────────────────────────────────── */
+  .song-section {
+    border: 1px solid var(--border); padding: 14px 16px; background: var(--surface);
+    margin-bottom: 24px;
+  }
+  .song-header {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
+  }
+  .song-header .section-label { margin-bottom: 0; }
+  .loop-btn {
+    font-family: 'Share Tech Mono', monospace; font-size: 11px;
+    letter-spacing: 0.2em; padding: 4px 12px;
+    border: 1px solid var(--border); background: var(--dim);
+    color: var(--text); cursor: pointer; transition: all 0.12s;
+  }
+  .loop-btn.loop-on {
+    border-color: var(--accent); color: var(--accent);
+    box-shadow: 0 0 8px rgba(0,229,255,0.3);
+  }
+  .loop-btn.loop-off {
+    border-color: var(--accent2); color: var(--accent2);
+  }
+
+  .song-chain {
+    display: grid;
+    grid-template-columns: repeat(16, 1fr);
+    gap: 4px;
+  }
+  .chain-cell {
+    border: 1px solid var(--border); background: var(--dim);
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; cursor: pointer; padding: 4px 2px;
+    min-height: 44px; transition: all 0.12s; user-select: none;
+    position: relative;
+  }
+  .chain-cell:hover { border-color: var(--text); }
+  .chain-cell.active-slot {
+    border-color: var(--accent); background: rgba(0,229,255,0.05);
+  }
+  .chain-cell.current-slot {
+    outline: 2px solid var(--pat-play); outline-offset: 2px;
+  }
+  .chain-cell .cell-pat {
+    font-size: 13px; color: var(--bright); letter-spacing: 0.1em;
+  }
+  .chain-cell.active-slot .cell-pat { color: var(--accent); }
+  .chain-cell .cell-rep {
+    font-size: 8px; color: var(--text); margin-top: 2px;
+  }
+  .chain-cell.active-slot .cell-rep { color: var(--text); }
+  .chain-cell.empty-slot .cell-pat { color: var(--border); font-size: 11px; }
+
+  /* ── Step display, VU, knobs ──────────────────────────────────────────── */
   .vu-row { display: flex; justify-content: center; gap: 4px; margin-bottom: 24px; height: 30px; align-items: flex-end; }
   .vu-bar { width: 8px; background: var(--dim); position: relative; overflow: hidden; }
   .vu-fill { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(to top, var(--accent), #ff0055); transition: height 0.05s; height: 0%; }
 
   .section-label { font-size: 9px; letter-spacing: 0.4em; color: var(--dim); text-transform: uppercase; margin-bottom: 8px; text-align: center; }
 
-  .step-display { display: flex; justify-content: center; gap: 3px; margin-bottom: 20px; }
+  .step-display { display: flex; justify-content: center; gap: 3px; margin-bottom: 16px; }
   .step-dot { width: 8px; height: 8px; border: 1px solid var(--border); background: var(--dim); transition: all 0.05s; }
   .step-dot.active { background: var(--accent); box-shadow: 0 0 6px rgba(0,229,255,0.6); }
 
@@ -146,13 +225,27 @@ static juce::String buildHtml()
   .knob-val { font-size: 11px; color: var(--accent); }
 
   footer { text-align: center; margin-top: 40px; font-size: 9px; letter-spacing: 0.4em; color: var(--border); }
+
+  /* ── Repeat popup ─────────────────────────────────────────────────────── */
+  #repeatPopup {
+    position: fixed; display: none; z-index: 200;
+    background: var(--surface); border: 1px solid var(--accent);
+    padding: 10px 12px; gap: 6px; flex-wrap: wrap; width: 140px;
+  }
+  #repeatPopup.visible { display: flex; }
+  #repeatPopup button {
+    font-family: 'Share Tech Mono', monospace; font-size: 11px;
+    border: 1px solid var(--border); background: var(--dim);
+    color: var(--text); cursor: pointer; padding: 4px 8px; flex: 1 0 28%;
+  }
+  #repeatPopup button:hover { border-color: var(--accent); color: var(--accent); }
 </style>
 </head>
 <body>
 <div class="container">
   <header>
     <h1>OBSTACLE</h1>
-    <div class="subtitle">algorithmic sequencer // cbn edition // mkii</div>
+    <div class="subtitle">algorithmic sequencer // cbn edition // song mode</div>
   </header>
 
   <div class="bpm-row">
@@ -176,11 +269,26 @@ static juce::String buildHtml()
   <div class="transport">
     <button class="btn" id="playBtn" onclick="togglePlay()">&#9654; PLAY</button>
     <button class="btn stop-btn" onclick="stopSeq()">&#9632; STOP</button>
+    <button class="btn next-btn" onclick="songNext()" title="Force next pattern at loop boundary">&#9654;&#9654; NEXT</button>
     <button class="btn" onclick="randomize()" style="border-color:#6644ff;color:#6644ff;">&#10227; REGEN</button>
+  </div>
+
+  <!-- Pattern Selector A-H -->
+  <div class="pattern-selector" id="patternSelector">
+    <span class="ps-label">PATTERN</span>
   </div>
 
   <div class="step-display" id="stepDisplay"></div>
   <div class="sequencer" id="sequencer"></div>
+
+  <!-- Song Chain -->
+  <div class="song-section">
+    <div class="song-header">
+      <span class="section-label">SONG CHAIN</span>
+      <button class="loop-btn loop-on" id="loopBtn" onclick="toggleLoopMode()">&#x21BA; LOOP</button>
+    </div>
+    <div class="song-chain" id="songChain"></div>
+  </div>
 
   <div class="knobs">
     <div class="knob-group">
@@ -207,21 +315,24 @@ static juce::String buildHtml()
 
   <div class="vu-row" id="vuRow"></div>
 
-  <footer>OBSTACLE ENGINE v2.0 // JUCE AUDIO // CBN</footer>
+  <footer>OBSTACLE ENGINE v3.0 // SONG MODE // JUCE AUDIO // CBN</footer>
 </div>
+
+<!-- Repeat count popup -->
+<div id="repeatPopup"></div>
 
 <script>
 // ── JUCE Bridge ──────────────────────────────────────────────────────────────
-let _juceCallId = 0;
+var _juceCallId = 0;
 
-function juceSend (name) {
+function juceSend(name) {
   var args = Array.prototype.slice.call(arguments, 1);
   if (window.__JUCE__ && window.__JUCE__.backend) {
     window.__JUCE__.backend.emitEvent('__juce__invoke', { name: name, params: args, resultId: _juceCallId++ });
   }
 }
 
-function juceAsync (name) {
+function juceAsync(name) {
   var args = Array.prototype.slice.call(arguments, 1);
   return new Promise(function(resolve) {
     if (!window.__JUCE__ || !window.__JUCE__.backend) { resolve(null); return; }
@@ -237,7 +348,7 @@ function juceAsync (name) {
   });
 }
 
-function waitForJuce (cb, ms) {
+function waitForJuce(cb, ms) {
   ms = ms || 4000;
   if (window.__JUCE__ && window.__JUCE__.backend) { cb(); return; }
   var t0 = Date.now();
@@ -249,36 +360,218 @@ function waitForJuce (cb, ms) {
   }, 50);
 }
 
-// ── Sequencer State ──────────────────────────────────────────────────────────
+// ── Global state ─────────────────────────────────────────────────────────────
 var STEPS = 16;
-var tracks = [
-  { id: 'kick',  label: 'KICK',   type: 'drum',    pattern: new Array(STEPS).fill(false) },
-  { id: 'snare', label: 'SNARE',  type: 'drum',    pattern: new Array(STEPS).fill(false) },
-  { id: 'hihat', label: 'HI-HAT', type: 'drum',    pattern: new Array(STEPS).fill(false) },
-  { id: 'bass',  label: 'BASS',   type: 'melodic', pattern: new Array(STEPS).fill(false), notes: new Array(STEPS).fill(0) },
-  { id: 'lead',  label: 'LEAD',   type: 'melodic', pattern: new Array(STEPS).fill(false), notes: new Array(STEPS).fill(4) },
-  { id: 'pad',   label: 'PAD',    type: 'melodic', pattern: new Array(STEPS).fill(false), notes: new Array(STEPS).fill(2) },
-];
+var NUM_PATTERNS = 8;
+var NUM_SONG_SLOTS = 16;
+var PAT_LABELS = ['A','B','C','D','E','F','G','H'];
 
-function loadDefaultPattern() {
-  tracks[0].pattern = [1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0].map(Boolean);
-  tracks[1].pattern = [0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0].map(Boolean);
-  tracks[2].pattern = [1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,1].map(Boolean);
-  tracks[3].pattern = [1,0,0,1,0,0,1,0,1,0,0,1,0,1,0,0].map(Boolean);
-  tracks[3].notes   = [0,0,0,5,0,0,3,0,0,0,0,0,0,5,0,0];
-  tracks[4].pattern = [0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,1].map(Boolean);
-  tracks[4].notes   = [4,4,4,4,4,4,6,4,4,4,4,4,4,4,4,2];
-  tracks[5].pattern = [1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0].map(Boolean);
-  tracks[5].notes   = [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2];
+// All 8 patterns stored locally
+var allPatterns = [];
+for (var p = 0; p < NUM_PATTERNS; p++) {
+  allPatterns.push([
+    { id:'kick',  label:'KICK',   type:'drum',    pattern: new Array(STEPS).fill(false) },
+    { id:'snare', label:'SNARE',  type:'drum',    pattern: new Array(STEPS).fill(false) },
+    { id:'hihat', label:'HI-HAT', type:'drum',    pattern: new Array(STEPS).fill(false) },
+    { id:'bass',  label:'BASS',   type:'melodic', pattern: new Array(STEPS).fill(false), notes: new Array(STEPS).fill(0) },
+    { id:'lead',  label:'LEAD',   type:'melodic', pattern: new Array(STEPS).fill(false), notes: new Array(STEPS).fill(4) },
+    { id:'pad',   label:'PAD',    type:'melodic', pattern: new Array(STEPS).fill(false), notes: new Array(STEPS).fill(2) },
+  ]);
 }
-loadDefaultPattern();
+
+var editPatIdx  = 0;
+var playPatIdx  = 0;
+var playSongSlot = 0;
+var uiPlaying   = false;
+
+// Song chain state
+var songChain = [];
+for (var sl = 0; sl < NUM_SONG_SLOTS; sl++)
+  songChain.push({ patternIndex: 0, repeatCount: 1 });
+var songChainLength = 1;
+var songLoopMode    = true;
+
+// Convenience getter for the currently edited pattern's tracks
+function curTracks() { return allPatterns[editPatIdx]; }
 
 var bassNotes = ['C2','D2','Eb2','F2','G2','Ab2','Bb2'];
 var leadNotes = ['C4','D4','Eb4','F4','G4','Ab4','Bb4'];
-var uiPlaying = false;
 
-// ── Build UI ─────────────────────────────────────────────────────────────────
+// ── Pattern selector UI ──────────────────────────────────────────────────────
+function buildPatternSelector() {
+  var sel = document.getElementById('patternSelector');
+  var label = sel.querySelector('.ps-label');
+  sel.innerHTML = '';
+  sel.appendChild(label);
+  for (var p = 0; p < NUM_PATTERNS; p++) {
+    (function(pi) {
+      var btn = document.createElement('button');
+      btn.className = 'pat-btn';
+      btn.id = 'patBtn-' + pi;
+      btn.textContent = PAT_LABELS[pi];
+      btn.onclick = function() { selectPattern(pi); };
+      sel.appendChild(btn);
+    })(p);
+  }
+  updatePatternSelector();
+}
+
+function updatePatternSelector() {
+  for (var p = 0; p < NUM_PATTERNS; p++) {
+    var btn = document.getElementById('patBtn-' + p);
+    if (!btn) continue;
+    btn.className = 'pat-btn';
+    if (p === editPatIdx) btn.classList.add('edit');
+    if (p === playPatIdx) btn.classList.add('play');
+  }
+}
+
+function selectPattern(idx) {
+  if (idx === editPatIdx) return;
+  juceAsync('jucePatternSelect', idx).then(function(result) {
+    if (!result) return;
+    editPatIdx = idx;
+    // Update local pattern from C++ response
+    if (result.tracks) {
+      var tracks = allPatterns[idx];
+      for (var ti = 0; ti < tracks.length; ti++) {
+        if (result.tracks[ti]) {
+          if (result.tracks[ti].pattern)
+            tracks[ti].pattern = Array.prototype.slice.call(result.tracks[ti].pattern).map(Boolean);
+          if (result.tracks[ti].notes)
+            tracks[ti].notes = Array.prototype.slice.call(result.tracks[ti].notes).map(Number);
+        }
+      }
+    }
+    buildUI();
+    updatePatternSelector();
+  });
+}
+
+// ── Song Chain UI ────────────────────────────────────────────────────────────
+var popupSlot = -1;
+
+function buildSongChain() {
+  var container = document.getElementById('songChain');
+  container.innerHTML = '';
+  for (var sl = 0; sl < NUM_SONG_SLOTS; sl++) {
+    (function(sli) {
+      var cell = document.createElement('div');
+      cell.id = 'chain-' + sli;
+      updateChainCell(cell, sli);
+
+      cell.onclick = function(e) { onChainCellClick(sli, e); };
+      cell.ondblclick = function() { onChainCellDblClick(sli); };
+      cell.oncontextmenu = function(e) {
+        e.preventDefault();
+        if (sli < songChainLength) showRepeatPopup(sli, e.clientX, e.clientY);
+      };
+
+      container.appendChild(cell);
+    })(sl);
+  }
+}
+
+function updateChainCell(cell, sli) {
+  cell.className = 'chain-cell';
+  if (sli < songChainLength) {
+    cell.classList.add('active-slot');
+    var pi = songChain[sli].patternIndex;
+    var rep = songChain[sli].repeatCount;
+    cell.innerHTML = '<span class="cell-pat">' + PAT_LABELS[pi] + '</span>' +
+                     '<span class="cell-rep">×' + rep + '</span>';
+  } else {
+    cell.classList.add('empty-slot');
+    cell.innerHTML = '<span class="cell-pat">·</span>';
+  }
+  if (sli === playSongSlot && uiPlaying) cell.classList.add('current-slot');
+}
+
+function refreshChainCell(sli) {
+  var cell = document.getElementById('chain-' + sli);
+  if (cell) updateChainCell(cell, sli);
+}
+
+function refreshAllChainCells() {
+  for (var sl = 0; sl < NUM_SONG_SLOTS; sl++) refreshChainCell(sl);
+}
+
+function onChainCellClick(sli, e) {
+  closeRepeatPopup();
+  if (sli < songChainLength) {
+    // Cycle pattern A→B→…→H→A
+    songChain[sli].patternIndex = (songChain[sli].patternIndex + 1) % NUM_PATTERNS;
+    juceSend('juceSongChainSet', sli, songChain[sli].patternIndex, songChain[sli].repeatCount);
+    refreshChainCell(sli);
+  } else if (sli === songChainLength && sli < NUM_SONG_SLOTS) {
+    // Activate next empty slot
+    songChain[sli].patternIndex = 0;
+    songChain[sli].repeatCount  = 1;
+    songChainLength = sli + 1;
+    juceSend('juceSongChainSet', sli, 0, 1);
+    refreshChainCell(sli);
+    if (sli + 1 < NUM_SONG_SLOTS) refreshChainCell(sli + 1);
+  }
+}
+
+function onChainCellDblClick(sli) {
+  // Double-click on last active slot → deactivate it
+  if (sli === songChainLength - 1 && songChainLength > 1) {
+    songChainLength--;
+    juceSend('juceSongChainSet', sli, songChain[sli].patternIndex, songChain[sli].repeatCount);
+    refreshChainCell(sli);
+    if (sli + 1 < NUM_SONG_SLOTS) refreshChainCell(sli + 1);
+  }
+}
+
+function showRepeatPopup(sli, x, y) {
+  var popup = document.getElementById('repeatPopup');
+  popup.innerHTML = '';
+  popupSlot = sli;
+  for (var r = 1; r <= 8; r++) {
+    (function(rv) {
+      var btn = document.createElement('button');
+      btn.textContent = '×' + rv;
+      btn.onclick = function() {
+        songChain[sli].repeatCount = rv;
+        juceSend('juceSongChainSet', sli, songChain[sli].patternIndex, rv);
+        refreshChainCell(sli);
+        closeRepeatPopup();
+      };
+      popup.appendChild(btn);
+    })(r);
+  }
+  popup.style.left = x + 'px';
+  popup.style.top  = y + 'px';
+  popup.classList.add('visible');
+  // Close on outside click
+  setTimeout(function() {
+    document.addEventListener('click', closeRepeatPopup, { once: true });
+  }, 10);
+}
+
+function closeRepeatPopup() {
+  var popup = document.getElementById('repeatPopup');
+  popup.classList.remove('visible');
+  popupSlot = -1;
+}
+
+function toggleLoopMode() {
+  songLoopMode = !songLoopMode;
+  juceSend('juceSongLoopMode', songLoopMode ? 1 : 0);
+  var btn = document.getElementById('loopBtn');
+  if (songLoopMode) {
+    btn.className = 'loop-btn loop-on';
+    btn.innerHTML = '&#x21BA; LOOP';
+  } else {
+    btn.className = 'loop-btn loop-off';
+    btn.innerHTML = '&#9632; STOP';
+  }
+}
+
+// ── Build sequencer grid ──────────────────────────────────────────────────────
 function buildUI() {
+  var tracks = curTracks();
   var seq = document.getElementById('sequencer');
   seq.innerHTML = '';
 
@@ -334,27 +627,30 @@ function buildUI() {
 
   // Step dots
   var sd = document.getElementById('stepDisplay');
-  sd.innerHTML = '';
-  for (var i = 0; i < STEPS; i++) {
-    var d = document.createElement('div');
-    d.className = 'step-dot';
-    d.id = 'dot-' + i;
-    sd.appendChild(d);
+  if (!sd.children.length) {
+    for (var i = 0; i < STEPS; i++) {
+      var d = document.createElement('div');
+      d.className = 'step-dot';
+      d.id = 'dot-' + i;
+      sd.appendChild(d);
+    }
   }
 
   // VU bars
   var vu = document.getElementById('vuRow');
-  vu.innerHTML = '';
-  for (var j = 0; j < 24; j++) {
-    var bar = document.createElement('div');
-    bar.className = 'vu-bar';
-    bar.innerHTML = '<div class="vu-fill" id="vu-' + j + '"></div>';
-    vu.appendChild(bar);
+  if (!vu.children.length) {
+    for (var j = 0; j < 24; j++) {
+      var bar = document.createElement('div');
+      bar.className = 'vu-bar';
+      bar.innerHTML = '<div class="vu-fill" id="vu-' + j + '"></div>';
+      vu.appendChild(bar);
+    }
   }
 }
 
 // ── Interactions ─────────────────────────────────────────────────────────────
 function toggleStep(ti, s) {
+  var tracks = curTracks();
   tracks[ti].pattern[s] = !tracks[ti].pattern[s];
   var stepsDiv = document.getElementById('steps-' + tracks[ti].id);
   if (stepsDiv) {
@@ -394,9 +690,14 @@ function stopSeq() {
   updateCurrentStep(-1);
 }
 
+function songNext() {
+  juceSend('juceSongNext');
+}
+
 function randomize() {
   juceAsync('juceRandomize').then(function(result) {
     if (!result) return;
+    var tracks = curTracks();
     for (var ti = 0; ti < tracks.length; ti++) {
       if (result[ti]) {
         if (result[ti].pattern) tracks[ti].pattern = Array.prototype.slice.call(result[ti].pattern).map(Boolean);
@@ -429,6 +730,7 @@ function updateCurrentStep(step) {
     document.querySelectorAll('.vu-fill').forEach(function(el) { el.style.height = '0%'; });
     return;
   }
+  var tracks = curTracks();
   tracks.forEach(function(track) {
     var stepsDiv = document.getElementById('steps-' + track.id);
     if (stepsDiv) {
@@ -454,8 +756,10 @@ document.getElementById('keySelect').onchange = function() {
   juceSend('juceParam', 'key', parseInt(this.value));
 };
 
-// ── Init UI then connect to JUCE ─────────────────────────────────────────────
+// ── Init ─────────────────────────────────────────────────────────────────────
+buildPatternSelector();
 buildUI();
+buildSongChain();
 
 waitForJuce(function() {
   // C++ → JS: step counter
@@ -476,6 +780,22 @@ waitForJuce(function() {
     }
   });
 
+  // C++ → JS: song state update (pattern/slot changed during playback)
+  window.__JUCE__.backend.addEventListener('songStateUpdate', function(data) {
+    if (!data) return;
+    var newPlayPat  = (data.playPatternIdx !== undefined) ? data.playPatternIdx : playPatIdx;
+    var newPlaySlot = (data.playSongSlot   !== undefined) ? data.playSongSlot   : playSongSlot;
+
+    var changed = (newPlayPat !== playPatIdx || newPlaySlot !== playSongSlot);
+    playPatIdx   = newPlayPat;
+    playSongSlot = newPlaySlot;
+
+    if (changed) {
+      updatePatternSelector();
+      refreshAllChainCells();
+    }
+  });
+
   // Request initial state from C++
   juceAsync('juceGetState').then(function(state) {
     if (!state) return;
@@ -483,9 +803,7 @@ waitForJuce(function() {
       document.getElementById('bpmSlider').value = state.bpm;
       document.getElementById('bpmVal').textContent = Math.round(state.bpm);
     }
-    if (state.key !== undefined) {
-      document.getElementById('keySelect').value = state.key;
-    }
+    if (state.key !== undefined)    document.getElementById('keySelect').value = state.key;
     if (state.reverb !== undefined) {
       var rv = Math.round(state.reverb * 100);
       document.getElementById('reverbKnob').value = rv;
@@ -505,23 +823,77 @@ waitForJuce(function() {
       document.getElementById('driveKnob').value = dr;
       document.getElementById('driveVal').textContent = dr + 'x';
     }
-    if (state.patterns) {
-      for (var ti = 0; ti < tracks.length; ti++) {
-        if (state.patterns[ti]) {
-          if (state.patterns[ti].pattern)
-            tracks[ti].pattern = Array.prototype.slice.call(state.patterns[ti].pattern).map(Boolean);
-          if (state.patterns[ti].notes)
-            tracks[ti].notes = Array.prototype.slice.call(state.patterns[ti].notes).map(Number);
+
+    // Restore patterns (all 8)
+    if (state.allPatterns) {
+      for (var pi = 0; pi < NUM_PATTERNS; pi++) {
+        if (!state.allPatterns[pi]) continue;
+        var tracks = allPatterns[pi];
+        for (var ti = 0; ti < tracks.length; ti++) {
+          var td = state.allPatterns[pi][ti];
+          if (td) {
+            if (td.pattern) tracks[ti].pattern = Array.prototype.slice.call(td.pattern).map(Boolean);
+            if (td.notes)   tracks[ti].notes   = Array.prototype.slice.call(td.notes).map(Number);
+          }
         }
       }
-      buildUI();
     }
+
+    // Restore song chain
+    if (state.songChainLength !== undefined) songChainLength = state.songChainLength;
+    if (state.songLoopMode    !== undefined) songLoopMode    = !!state.songLoopMode;
+    if (state.songChain) {
+      for (var sl = 0; sl < NUM_SONG_SLOTS; sl++) {
+        if (state.songChain[sl]) {
+          songChain[sl].patternIndex = state.songChain[sl].patternIndex || 0;
+          songChain[sl].repeatCount  = state.songChain[sl].repeatCount  || 1;
+        }
+      }
+    }
+    if (state.editPatternIdx !== undefined) editPatIdx  = state.editPatternIdx;
+    if (state.playPatternIdx !== undefined) playPatIdx  = state.playPatternIdx;
+    if (state.playSongSlot   !== undefined) playSongSlot = state.playSongSlot;
+
+    // Update loop button
+    var loopBtn = document.getElementById('loopBtn');
+    if (songLoopMode) {
+      loopBtn.className = 'loop-btn loop-on';
+      loopBtn.innerHTML = '&#x21BA; LOOP';
+    } else {
+      loopBtn.className = 'loop-btn loop-off';
+      loopBtn.innerHTML = '&#9632; STOP';
+    }
+
+    buildPatternSelector();
+    buildUI();
+    buildSongChain();
   });
 });
 </script>
 </body>
 </html>
 )HTML");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Clear WKWebView disk cache (macOS) so every launch gets fresh HTML
+// ─────────────────────────────────────────────────────────────────────────────
+static void clearWebViewCache()
+{
+   #if JUCE_MAC
+    // Delete ~/Library/Caches/<bundleId> and ~/Library/WebKit/<bundleId>
+    juce::String bundleId = juce::JUCEApplication::getInstance()
+                                ? juce::JUCEApplication::getInstance()->getApplicationName()
+                                : juce::String{};
+
+    auto home = juce::File::getSpecialLocation (juce::File::userHomeDirectory);
+    for (auto subdir : { "Library/Caches/com.fred.obstacle",
+                         "Library/WebKit/com.fred.obstacle" })
+    {
+        auto dir = home.getChildFile (subdir);
+        if (dir.exists()) dir.deleteRecursively();
+    }
+   #endif
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -534,20 +906,54 @@ ObstacleEditor::ObstacleEditor (ObstacleProcessor& p)
                    .withResourceProvider (
                        [this] (const auto& url) { return getResource (url); },
                        juce::URL { juce::WebBrowserComponent::getResourceProviderRoot() }.getOrigin())
-                   // ── Toggle a step ─────────────────────────────────────────
+                   // ── Toggle a step (current edit pattern) ──────────────────
                    .withNativeFunction ("juceToggle",
                        [this] (const juce::var& args, auto complete) {
                            int ti = (int)args[0], s = (int)args[1];
+                           int pi = proc.editPatternIdx.load();
                            if (ti >= 0 && ti < NUM_TRACKS && s >= 0 && s < 16)
-                               proc.steps[ti][s] = !proc.steps[ti][s];
+                               proc.patterns[pi].steps[ti][s] = !proc.patterns[pi].steps[ti][s];
                            complete (juce::var{});
                        })
-                   // ── Set melodic note ──────────────────────────────────────
+                   // ── Set melodic note (current edit pattern) ───────────────
                    .withNativeFunction ("juceNote",
                        [this] (const juce::var& args, auto complete) {
                            int ti = (int)args[0], s = (int)args[1], v = (int)args[2];
+                           int pi = proc.editPatternIdx.load();
                            if (ti >= 0 && ti < NUM_TRACKS && s >= 0 && s < 16)
-                               proc.stepNotes[ti][s] = juce::jlimit (0, 6, v);
+                               proc.patterns[pi].stepNotes[ti][s] = juce::jlimit (0, 6, v);
+                           complete (juce::var{});
+                       })
+                   // ── Select pattern to edit ────────────────────────────────
+                   .withNativeFunction ("jucePatternSelect",
+                       [this] (const juce::var& args, auto complete) {
+                           int idx = juce::jlimit (0, NUM_PATTERNS - 1, (int)args[0]);
+                           proc.editPatternIdx.store (idx);
+                           complete (buildPatternVar (idx));
+                       })
+                   // ── Force next song slot ───────────────────────────────────
+                   .withNativeFunction ("juceSongNext",
+                       [this] (const juce::var&, auto complete) {
+                           proc.nextRequested.store (true);
+                           complete (juce::var{});
+                       })
+                   // ── Set song chain slot ────────────────────────────────────
+                   .withNativeFunction ("juceSongChainSet",
+                       [this] (const juce::var& args, auto complete) {
+                           int slot    = juce::jlimit (0, NUM_SONG_SLOTS - 1, (int)args[0]);
+                           int patIdx  = juce::jlimit (0, NUM_PATTERNS  - 1, (int)args[1]);
+                           int repeat  = juce::jlimit (1, 8,                  (int)args[2]);
+                           proc.songChain[slot].patternIndex = patIdx;
+                           proc.songChain[slot].repeatCount  = repeat;
+                           // Expand/shrink chain length
+                           if (slot + 1 > proc.songChainLength)
+                               proc.songChainLength = slot + 1;
+                           complete (juce::var{});
+                       })
+                   // ── Set loop mode ──────────────────────────────────────────
+                   .withNativeFunction ("juceSongLoopMode",
+                       [this] (const juce::var& args, auto complete) {
+                           proc.songLoopMode = ((int)args[0] != 0);
                            complete (juce::var{});
                        })
                    // ── Play / Stop ───────────────────────────────────────────
@@ -565,7 +971,8 @@ ObstacleEditor::ObstacleEditor (ObstacleProcessor& p)
                    .withNativeFunction ("juceRandomize",
                        [this] (const juce::var&, auto complete) {
                            proc.randomizePattern();
-                           complete (buildPatternVar());
+                           int pi = proc.editPatternIdx.load();
+                           complete (buildPatternArray (pi));
                        })
                    // ── Parameter change ──────────────────────────────────────
                    .withNativeFunction ("juceParam",
@@ -579,11 +986,14 @@ ObstacleEditor::ObstacleEditor (ObstacleProcessor& p)
                            complete (buildStateVar());
                        }))
 {
+    clearWebViewCache();
     addAndMakeVisible (webView);
     setResizable (true, false);
     setResizeLimits (800, 480, 1680, 1040);
-    setSize (1100, 640);
-    webView.goToURL (juce::WebBrowserComponent::getResourceProviderRoot());
+    setSize (1100, 700);
+    // Append build timestamp to bust WKWebView disk cache
+    webView.goToURL (juce::WebBrowserComponent::getResourceProviderRoot()
+                     + "?v=" + juce::String (juce::Time::currentTimeMillis()));
     startTimerHz (30);
 }
 
@@ -603,6 +1013,8 @@ void ObstacleEditor::timerCallback()
 {
     int  step    = proc.currentStep.load();
     bool playing = proc.playing.load();
+    int  ppIdx   = proc.playPatternIdx.load();
+    int  psSlot  = proc.playSongSlot.load();
 
     if (step != lastStep) {
         lastStep = step;
@@ -613,6 +1025,15 @@ void ObstacleEditor::timerCallback()
         uiPlaying = playing;
         webView.emitEventIfBrowserIsVisible ("playStateUpdate", juce::var (playing));
     }
+    if (ppIdx != lastPlayPatternIdx || psSlot != lastPlaySongSlot) {
+        lastPlayPatternIdx = ppIdx;
+        lastPlaySongSlot   = psSlot;
+
+        auto* obj = new juce::DynamicObject();
+        obj->setProperty ("playPatternIdx", ppIdx);
+        obj->setProperty ("playSongSlot",   psSlot);
+        webView.emitEventIfBrowserIsVisible ("songStateUpdate", juce::var (obj));
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -621,9 +1042,11 @@ void ObstacleEditor::timerCallback()
 std::optional<juce::WebBrowserComponent::Resource>
 ObstacleEditor::getResource (const juce::String& url)
 {
-    juce::String path = (url == "/")
+    // Strip query string (used for cache-busting) before path matching
+    juce::String cleanUrl = url.upToFirstOccurrenceOf ("?", false, false);
+    juce::String path = (cleanUrl == "/")
         ? "index.html"
-        : url.fromFirstOccurrenceOf ("/", false, false);
+        : cleanUrl.fromFirstOccurrenceOf ("/", false, false);
 
     if (path.isEmpty() || path == "index.html")
     {
@@ -637,24 +1060,50 @@ ObstacleEditor::getResource (const juce::String& url)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Build pattern juce::var (for JS)
+//  Build flat track array [{pattern,notes}...] — used by juceRandomize
 // ─────────────────────────────────────────────────────────────────────────────
-juce::var ObstacleEditor::buildPatternVar() const
+juce::var ObstacleEditor::buildPatternArray (int patIdx) const
 {
+    const auto& pat = proc.patterns[patIdx];
     juce::Array<juce::var> result;
     for (int t = 0; t < NUM_TRACKS; ++t)
     {
         auto* obj = new juce::DynamicObject();
-        juce::Array<juce::var> pat, notes;
+        juce::Array<juce::var> pats, notes;
         for (int s = 0; s < 16; ++s) {
-            pat.add   (juce::var (proc.steps[t][s]));
-            notes.add (juce::var (proc.stepNotes[t][s]));
+            pats.add  (juce::var (pat.steps[t][s]));
+            notes.add (juce::var (pat.stepNotes[t][s]));
         }
-        obj->setProperty ("pattern", juce::var (pat));
+        obj->setProperty ("pattern", juce::var (pats));
         obj->setProperty ("notes",   juce::var (notes));
         result.add (juce::var (obj));
     }
     return juce::var (result);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Build pattern juce::var for a given pattern index
+// ─────────────────────────────────────────────────────────────────────────────
+juce::var ObstacleEditor::buildPatternVar (int patIdx) const
+{
+    const auto& pat = proc.patterns[patIdx];
+    auto* wrapper = new juce::DynamicObject();
+
+    juce::Array<juce::var> trackArr;
+    for (int t = 0; t < NUM_TRACKS; ++t)
+    {
+        auto* obj = new juce::DynamicObject();
+        juce::Array<juce::var> pats, notes;
+        for (int s = 0; s < 16; ++s) {
+            pats.add  (juce::var (pat.steps[t][s]));
+            notes.add (juce::var (pat.stepNotes[t][s]));
+        }
+        obj->setProperty ("pattern", juce::var (pats));
+        obj->setProperty ("notes",   juce::var (notes));
+        trackArr.add (juce::var (obj));
+    }
+    wrapper->setProperty ("tracks", juce::var (trackArr));
+    return juce::var (wrapper);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -669,7 +1118,29 @@ juce::var ObstacleEditor::buildStateVar() const
     if (proc.filterCutParam) obj->setProperty ("cutoff", (double)proc.filterCutParam->get());
     if (proc.driveParam)     obj->setProperty ("drive",  (double)juce::jlimit (1.f, 20.f, proc.driveParam->get() * 2.f));
     if (proc.keyParam)       obj->setProperty ("key",    (int)proc.keyParam->get());
-    obj->setProperty ("patterns", buildPatternVar());
+
+    obj->setProperty ("editPatternIdx", proc.editPatternIdx.load());
+    obj->setProperty ("playPatternIdx", proc.playPatternIdx.load());
+    obj->setProperty ("playSongSlot",   proc.playSongSlot.load());
+    obj->setProperty ("songChainLength", proc.songChainLength);
+    obj->setProperty ("songLoopMode",    proc.songLoopMode);
+
+    // All 8 patterns as flat track arrays [{pattern,notes}...]
+    juce::Array<juce::var> allPats;
+    for (int pi = 0; pi < NUM_PATTERNS; ++pi)
+        allPats.add (buildPatternArray (pi));
+    obj->setProperty ("allPatterns", juce::var (allPats));
+
+    // Song chain slots
+    juce::Array<juce::var> chain;
+    for (int sl = 0; sl < NUM_SONG_SLOTS; ++sl) {
+        auto* slotObj = new juce::DynamicObject();
+        slotObj->setProperty ("patternIndex", proc.songChain[sl].patternIndex);
+        slotObj->setProperty ("repeatCount",  proc.songChain[sl].repeatCount);
+        chain.add (juce::var (slotObj));
+    }
+    obj->setProperty ("songChain", juce::var (chain));
+
     return juce::var (obj);
 }
 

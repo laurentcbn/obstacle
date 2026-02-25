@@ -20,6 +20,26 @@ inline float midiToFreq(int midi) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+//  Song Mode structures
+// ─────────────────────────────────────────────────────────────────────────────
+static constexpr int NUM_PATTERNS   = 8;
+static constexpr int NUM_SONG_SLOTS = 16;
+
+struct Pattern {
+    std::array<std::array<bool, 16>, NUM_TRACKS> steps;
+    std::array<std::array<int,  16>, NUM_TRACKS> stepNotes;
+    Pattern() {
+        for (auto& r : steps)     r.fill(false);
+        for (auto& r : stepNotes) r.fill(0);
+    }
+};
+
+struct SongSlot {
+    int patternIndex = 0;  // 0-7 (A-H)
+    int repeatCount  = 1;  // 1-8 loops before advancing
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 class ObstacleProcessor  : public juce::AudioProcessor
 {
 public:
@@ -48,14 +68,23 @@ public:
     void getStateInformation (juce::MemoryBlock& dest) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    // ── Patterns & Song Chain ─────────────────────────────────────────────────
+    std::array<Pattern, NUM_PATTERNS>    patterns;            // A-H
+    std::array<SongSlot, NUM_SONG_SLOTS> songChain;
+    int                                  songChainLength = 1; // 1-16 active slots
+    bool                                 songLoopMode    = true;
+
+    std::atomic<int>  editPatternIdx  { 0 };  // pattern shown in editor
+    std::atomic<int>  playPatternIdx  { 0 };  // pattern currently playing
+    std::atomic<int>  playSongSlot    { 0 };  // current slot in chain
+    std::atomic<bool> nextRequested   { false }; // force-advance on next step 0
+
     // ── Sequencer state ───────────────────────────────────────────────────────
-    std::array<std::array<bool, 16>, NUM_TRACKS> steps;
-    std::array<std::array<int,  16>, NUM_TRACKS> stepNotes; // scale degree 0-6 (melodic tracks)
     std::atomic<int>   currentStep { -1 };
     std::atomic<float> bpm { 128.f };
     std::atomic<bool>  playing { false };
 
-    // Randomize the pattern (called from editor Rand button)
+    // Randomize the current edit pattern (called from editor Rand button)
     void randomizePattern();
 
     // ── Parameters ────────────────────────────────────────────────────────────
@@ -92,6 +121,9 @@ private:
     double sampleCounter  = 0.0;
     int    seqStep        = 0;
 
+    // Song chain tracking (audio thread only)
+    int  loopCount = 0;
+
     juce::Random rng;
 
     bool wasHostPlaying      = false;
@@ -99,8 +131,9 @@ private:
 
     int midiActiveNote[NUM_TRACKS]; // -1 = no active note
 
-    void buildDefaultPattern();
-    void triggerStep(int step, juce::MidiBuffer& midi, int samplePos);
+    void buildDefaultPattern(int patIdx = 0);
+    void triggerStep(int step, juce::MidiBuffer& midi, int samplePos, int patIdx);
+    void nextSongSlot();
     void updateStepTiming();
     void sendAllNotesOff(juce::MidiBuffer& midi, int samplePos);
 
