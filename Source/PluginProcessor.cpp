@@ -222,6 +222,49 @@ void ObstacleProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     juce::ScopedNoDenormals noDenormals;
     buffer.clear();
 
+    // ── Host transport sync (GarageBand / Logic Pro) ─────────────────────────
+    if (auto* playHead = getPlayHead())
+    {
+        const auto pos = playHead->getPosition();
+        if (pos.hasValue())
+        {
+            // Sync BPM from host
+            if (const auto hostBpm = pos->getBpm())
+            {
+                const float hbpm = juce::jlimit(60.f, 200.f, (float)*hostBpm);
+                if (std::abs(hbpm - bpm.load()) > 0.05f)
+                {
+                    bpm.store(hbpm);
+                    *bpmParam = hbpm;
+                    updateStepTiming();
+                }
+            }
+
+            // Sync play/stop from host
+            {
+                const bool hostPlaying = pos->getIsPlaying();
+                if (hostPlaying && !wasHostPlaying)
+                {
+                    // Host just started — align sequencer to PPQ grid
+                    if (const auto ppq = pos->getPpqPosition())
+                    {
+                        const double stepsF = *ppq / 0.25; // 16th notes
+                        seqStep = (int)std::floor(stepsF) % 16;
+                        const double frac = stepsF - std::floor(stepsF);
+                        sampleCounter = samplesPerStep * (1.0 - frac);
+                    }
+                    else
+                    {
+                        seqStep = -1;
+                        sampleCounter = 0.0;
+                    }
+                }
+                playing.store(hostPlaying);
+                wasHostPlaying = hostPlaying;
+            }
+        }
+    }
+
     // ── Sync BPM ────────────────────────────────────────────────────────────
     float newBpm = bpmParam->get();
     if (std::abs(newBpm - bpm.load()) > 0.05f) {

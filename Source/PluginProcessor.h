@@ -94,6 +94,8 @@ private:
 
     juce::Random rng;
 
+    bool wasHostPlaying = false;
+
     void buildDefaultPattern();
     void triggerStep(int step);
     void updateStepTiming();
