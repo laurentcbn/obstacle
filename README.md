@@ -2,7 +2,7 @@
 
 **Minimal techno step sequencer — AU plugin for macOS**
 
-A 6-track, 16-step drum machine and melodic sequencer with a dark web-based UI, built with JUCE 8. Inspired by Trentemøller, Nils Frahm, and the Elektron workflow.
+A 6-track, 16-step drum machine and melodic sequencer, built with JUCE 8. Inspired by Trentemøller, Nils Frahm, and the Elektron workflow.
 
 ---
 
