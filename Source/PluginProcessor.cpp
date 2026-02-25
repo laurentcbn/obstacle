@@ -77,6 +77,8 @@ ObstacleProcessor::ObstacleProcessor()
     }
 
     buildDefaultPattern();
+
+    for (int t = 0; t < NUM_TRACKS; ++t) midiActiveNote[t] = -1;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -188,10 +190,37 @@ void ObstacleProcessor::updateStepTiming()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-void ObstacleProcessor::triggerStep(int step)
+void ObstacleProcessor::triggerStep(int step, juce::MidiBuffer& midi, int samplePos)
 {
     int key = keyParam ? keyParam->get() : 0;
 
+    static const int midiChan[NUM_TRACKS] = { 1, 2, 3, 4, 5, 6 };
+
+    // ── MIDI output ───────────────────────────────────────────────────────────
+    for (int t = 0; t < NUM_TRACKS; ++t)
+    {
+        if (!steps[t][step])            continue;
+        if (trackMuteParam[t]->get())   continue;
+
+        int note = 0;
+        if      (t == KICK)  note = 36;
+        else if (t == SNARE) note = 38;
+        else if (t == HIHAT) note = 42;
+        else if (t == BASS)  { int d = juce::jlimit(0,6,stepNotes[BASS][step]); note = kBassBaseMidi[d] + key; }
+        else if (t == LEAD)  { int d = juce::jlimit(0,6,stepNotes[LEAD][step]); note = kLeadBaseMidi[d] + key; }
+        else                 { int d = juce::jlimit(0,6,stepNotes[PAD][step]);  note = kPadBaseMidi[d]  + key; }
+
+        note = juce::jlimit(0, 127, note);
+        int velocity = juce::jlimit(1, 127, (int)(trackVolParam[t]->get() * 100.f));
+
+        if (midiActiveNote[t] != -1)
+            midi.addEvent(juce::MidiMessage::noteOff(midiChan[t], midiActiveNote[t]), samplePos);
+
+        midi.addEvent(juce::MidiMessage::noteOn(midiChan[t], note, (juce::uint8)velocity), samplePos);
+        midiActiveNote[t] = note;
+    }
+
+    // ── Audio voices ──────────────────────────────────────────────────────────
     if (steps[KICK][step])  kick.trigger();
     if (steps[SNARE][step]) snare.trigger();
     if (steps[HIHAT][step]) hihat.trigger(false);
@@ -216,11 +245,28 @@ void ObstacleProcessor::triggerStep(int step)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+void ObstacleProcessor::sendAllNotesOff(juce::MidiBuffer& midi, int samplePos)
+{
+    static const int midiChan[NUM_TRACKS] = { 1, 2, 3, 4, 5, 6 };
+
+    for (int t = 0; t < NUM_TRACKS; ++t)
+    {
+        if (midiActiveNote[t] != -1)
+        {
+            midi.addEvent(juce::MidiMessage::noteOff(midiChan[t], midiActiveNote[t]), samplePos);
+            midiActiveNote[t] = -1;
+        }
+        midi.addEvent(juce::MidiMessage::allNotesOff(midiChan[t]), samplePos);
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 void ObstacleProcessor::processBlock (juce::AudioBuffer<float>& buffer,
-                                       juce::MidiBuffer&)
+                                       juce::MidiBuffer& midiBuffer)
 {
     juce::ScopedNoDenormals noDenormals;
     buffer.clear();
+    midiBuffer.clear();
 
     // ── Host transport sync (GarageBand / Logic Pro) ─────────────────────────
     if (auto* playHead = getPlayHead())
@@ -259,7 +305,10 @@ void ObstacleProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                         sampleCounter = 0.0;
                     }
                 }
-                playing.store(hostPlaying);
+                // Only let host transport control playing when inside a real DAW,
+                // not in standalone mode (where the UI button drives playing).
+                if (wrapperType != wrapperType_Standalone)
+                    playing.store(hostPlaying);
                 wasHostPlaying = hostPlaying;
             }
         }
@@ -295,7 +344,16 @@ void ObstacleProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     for (int t = 0; t < NUM_TRACKS; ++t)
         trackGains[t] = trackMuteParam[t]->get() ? 0.f : trackVolParam[t]->get();
 
-    if (!playing.load()) return;
+    if (!playing.load())
+    {
+        if (wasPreviouslyPlaying)
+        {
+            sendAllNotesOff(midiBuffer, 0);
+            wasPreviouslyPlaying = false;
+        }
+        return;
+    }
+    wasPreviouslyPlaying = true;
 
     auto* outL = buffer.getWritePointer(0);
     auto* outR = buffer.getWritePointer(1);
@@ -308,7 +366,7 @@ void ObstacleProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         {
             seqStep = (seqStep + 1) % 16;
             currentStep.store(seqStep);
-            triggerStep(seqStep);
+            triggerStep(seqStep, midiBuffer, i);
             // Swing: alternate step length (even=longer, odd=shorter)
             double swingFactor = (seqStep % 2 == 0) ? (1.0 + swingAmt) : (1.0 - swingAmt);
             sampleCounter += samplesPerStep * swingFactor;

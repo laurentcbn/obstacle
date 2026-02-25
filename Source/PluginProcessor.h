@@ -35,7 +35,7 @@ public:
 
     const juce::String getName() const override { return "OBSTACLE"; }
     bool acceptsMidi()  const override { return false; }
-    bool producesMidi() const override { return false; }
+    bool producesMidi() const override { return true; }
     bool isMidiEffect() const override { return false; }
     double getTailLengthSeconds() const override { return 4.0; }
 
@@ -94,11 +94,15 @@ private:
 
     juce::Random rng;
 
-    bool wasHostPlaying = false;
+    bool wasHostPlaying      = false;
+    bool wasPreviouslyPlaying = false;
+
+    int midiActiveNote[NUM_TRACKS]; // -1 = no active note
 
     void buildDefaultPattern();
-    void triggerStep(int step);
+    void triggerStep(int step, juce::MidiBuffer& midi, int samplePos);
     void updateStepTiming();
+    void sendAllNotesOff(juce::MidiBuffer& midi, int samplePos);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ObstacleProcessor)
 };
