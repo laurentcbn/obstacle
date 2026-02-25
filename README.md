@@ -1,34 +1,35 @@
 # OBSTACLE
 
-**Minimal techno step sequencer — AU plugin for macOS**
+**Séquenceur minimal techno — plugin AU pour macOS**
 
-A 6-track, 16-step drum machine and melodic sequencer, built with JUCE 8. Inspired by Trentemøller, Nils Frahm, and the Elektron workflow.
-
----
-
-## 📦 Download (Prebuilt Release)
-
-If you don’t want to build from source, you can download the precompiled version:
-
-👉 https://github.com/laurentcbn/obstacle/releases/tag/1.0.0
-
-1. Download the **`release.zip`** file  
-2. Extract the archive  
-3. Install the Standalone app or AU plugin (see *Install* section below)
+Un drum machine et séquenceur mélodique 6 pistes / 16 pas, construit avec JUCE 8. Inspiré de Trentemøller, Nils Frahm et du workflow Elektron.
 
 ---
 
-## Features
+## 📦 Téléchargement (version précompilée)
 
-- **6 tracks** — Kick, Snare, Hihat, Bass, Lead, Pad
-- **16-step sequencer** with per-step note selection (A natural minor scale)
-- **Swing** control for groove feel
-- **FX chain** — Reverb, Delay (mix + feedback), LP Filter, Drive/Saturation
-- **Per-track** volume, mute, and decay/filter/attack controls
-- **Key transpose** — ±12 semitones
-- **Randomize** — generates a new pattern in the current style
-- **Web-based UI** embedded directly in the plugin window (no external browser needed)
-- Formats: **AU** (GarageBand, Logic Pro) + **Standalone**
+👉 https://github.com/laurentcbn/obstacle/releases/tag/v1.2.0
+
+1. Télécharger le fichier **`OBSTACLE-macOS-v1.2.0.zip`**
+2. Extraire l'archive
+3. Installer le Standalone ou le plugin AU (voir section *Installation* ci-dessous)
+
+---
+
+## Fonctionnalités
+
+- **6 pistes** — Kick, Snare, Hihat, Bass, Lead, Pad
+- **Séquenceur 16 pas** avec sélection de note par pas (gamme de La mineur naturel)
+- **8 patterns indépendants (A–H)** — composez plusieurs patterns distincts
+- **Song Mode** — chaîne de 16 slots avec répétitions par slot (×1 à ×8)
+- **Bouton NEXT** — force le passage au pattern suivant à la prochaine boucle
+- **Swing** pour le groove
+- **Chaîne FX** — Reverb, Delay (mix + feedback), filtre LP, Drive/Saturation
+- **Par piste** — volume, mute, et contrôle decay/filtre/attaque
+- **Transposition** — ±12 demi-tons
+- **Randomize** — génère un nouveau pattern dans le style courant
+- **UI web embarquée** directement dans la fenêtre du plugin (pas de navigateur externe)
+- Formats : **AU** (GarageBand, Logic Pro) + **Standalone**
 
 ---
 
@@ -38,30 +39,30 @@ If you don’t want to build from source, you can download the precompiled versi
 
 ---
 
-## Requirements
+## Prérequis
 
 - macOS 13+
-- Xcode 15+ (to build from source)
+- Xcode 15+ (pour compiler depuis les sources)
 - CMake 3.22+
 
 ---
 
-## Build from source
+## Compiler depuis les sources
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/OBSTACLE.git
-cd OBSTACLE
+git clone https://github.com/laurentcbn/obstacle.git
+cd obstacle
 
-# Configure
+# Configurer
 cmake -B build -G Xcode
 
-# Build Standalone
+# Compiler le Standalone
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
   xcodebuild -project build/OBSTACLE.xcodeproj \
              -scheme OBSTACLE_Standalone \
              -configuration Release
 
-# Build AU
+# Compiler le plugin AU
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
   xcodebuild -project build/OBSTACLE.xcodeproj \
              -scheme OBSTACLE_AU \
@@ -70,37 +71,38 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 
 ---
 
-## Install
+## Installation
 
-### Standalone app
+### Application Standalone
 ```bash
-cp -R build/OBSTACLE_artefacts/Release/Standalone/OBSTACLE.app /Applications/
+rm -rf /Applications/OBSTACLE.app
+cp -r build/OBSTACLE_artefacts/Release/Standalone/OBSTACLE.app /Applications/
 ```
 
-### AU plugin (GarageBand / Logic Pro)
+### Plugin AU (GarageBand / Logic Pro)
 ```bash
-cp -R build/OBSTACLE_artefacts/Release/AU/OBSTACLE.component \
+cp -r build/OBSTACLE_artefacts/Release/AU/OBSTACLE.component \
       ~/Library/Audio/Plug-Ins/Components/
 ```
 
-Then rescan in GarageBand: restart the app, or run `auval -a` in Terminal.
+Puis rescanner dans GarageBand : redémarrer l'app, ou lancer `auval -a` dans le Terminal.
 
 ---
 
-## Using in GarageBand
+## Utilisation dans GarageBand
 
-1. Open GarageBand and create an **Audio** track
-2. Open **Smart Controls** → **Plug-ins**
-3. Click a plugin slot → **Audio Units** → **Fred** → **OBSTACLE**
-4. Press **PLAY** in the plugin UI — audio is generated directly by the plugin
+1. Ouvrir GarageBand et créer une piste **Audio**
+2. Ouvrir **Smart Controls** → **Plug-ins**
+3. Cliquer sur un slot → **Audio Units** → **Fred** → **OBSTACLE**
+4. Appuyer sur **PLAY** dans l'interface du plugin
 
 ---
 
-## Using in Logic Pro
+## Utilisation dans Logic Pro
 
-1. Create a **Software Instrument** track
-2. Open the instrument slot → **AU Instruments** → **Fred** → **OBSTACLE**
-3. Press **PLAY** in the plugin UI
+1. Créer une piste **Software Instrument**
+2. Ouvrir le slot instrument → **AU Instruments** → **Fred** → **OBSTACLE**
+3. Appuyer sur **PLAY** dans l'interface du plugin
 
 ---
 
@@ -108,41 +110,44 @@ Then rescan in GarageBand: restart the app, or run `auval -a` in Terminal.
 
 ```
 Source/
-├── PluginProcessor.cpp   # Sequencer engine, audio synthesis, parameters
-├── PluginProcessor.h     # Parameter declarations, voice types
-├── PluginEditor.cpp      # WebBrowserComponent UI host + HTML/CSS/JS
-├── PluginEditor.h        # Editor class declaration
-└── SynthEngine.h         # Kick, Snare, Hihat, Bass, Lead, Pad voices + FX chain
+├── PluginProcessor.cpp   # Moteur séquenceur, synthèse audio, paramètres
+├── PluginProcessor.h     # Déclarations des paramètres, types de voix, structures Pattern/SongSlot
+├── PluginEditor.cpp      # Hôte WebBrowserComponent + HTML/CSS/JS
+├── PluginEditor.h        # Déclaration de la classe éditeur
+└── SynthEngine.h         # Voix Kick, Snare, Hihat, Bass, Lead, Pad + chaîne FX
 ```
 
-The UI is a full HTML/CSS/JS page served from C++ memory via JUCE 8's `WebBrowserComponent` resource provider. JS ↔ C++ communication uses JUCE's native function bridge (`window.__JUCE__.backend`).
+L'UI est une page HTML/CSS/JS complète servie depuis la mémoire C++ via le resource provider `WebBrowserComponent` de JUCE 8. La communication JS ↔ C++ utilise le bridge de fonctions natives JUCE (`window.__JUCE__.backend`).
 
 ---
 
-## UI Controls
+## Contrôles
 
-| Control | Description |
+| Contrôle | Description |
 |---|---|
-| **PLAY / STOP** | Start or stop the sequencer |
-| **RAND** | Randomize the pattern |
-| **KEY ◄ ►** | Transpose all melodic tracks (±12 semitones) |
+| **PLAY / STOP** | Démarrer ou arrêter le séquenceur |
+| **▶▶ NEXT** | Forcer le passage au pattern suivant (Song Mode) |
+| **REGEN** | Randomiser le pattern en cours d'édition |
+| **A–H** | Sélectionner le pattern à éditer (cyan = édition, contour rouge = lecture) |
+| **KEY** | Transposer toutes les pistes mélodiques (±12 demi-tons) |
 | **BPM** | Tempo (60–200 BPM) |
-| **Step grid** | Left-click to toggle a step. Right-click on Bass/Lead/Pad to select note (A–G) |
-| **Mute** | Silence a track without clearing its pattern |
-| **Vol** | Per-track volume |
-| **Dec / Filt / Atk** | Decay (drums), filter openness (bass), attack (lead/pad) |
-| **REV** | Reverb mix |
-| **DLY / FEED** | Delay mix and feedback |
-| **CUT** | Global low-pass filter cutoff |
-| **DRIVE** | Soft saturation |
-| **Master VOL** | Output volume |
+| **Grille de pas** | Clic gauche pour activer/désactiver un pas. Clic droit sur Bass/Lead/Pad pour choisir la note (A–G) |
+| **Song Chain** | Clic = cycle de pattern, clic droit = répétitions (×1–×8), ⟳/■ = boucle ou stop |
+| **Mute** | Silence une piste sans effacer son pattern |
+| **Vol** | Volume par piste |
+| **Dec / Filt / Atk** | Decay (percussions), ouverture filtre (basse), attaque (lead/pad) |
+| **REV** | Mix de reverb |
+| **DLY / FEED** | Mix et feedback du delay |
+| **CUT** | Cutoff du filtre passe-bas global |
+| **DRIVE** | Saturation douce |
+| **Master VOL** | Volume de sortie |
 
 ---
 
-## License
+## Licence
 
-MIT — do whatever you want with it.
+MIT — faites-en ce que vous voulez.
 
 ---
 
-*Built by CBN*
+*Construit par CBN*
