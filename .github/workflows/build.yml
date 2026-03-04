@@ -12,8 +12,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install WebView2 SDK
+        run: nuget install Microsoft.Web.WebView2 -Version 1.0.2277.86 -OutputDirectory webview2
+        shell: pwsh
+
       - name: Configure CMake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release "-DWEBVIEW2_PATH=${{github.workspace}}/webview2/Microsoft.Web.WebView2.1.0.2277.86"
 
       - name: Build
         run: cmake --build build --config Release -j4

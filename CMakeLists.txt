@@ -57,6 +57,12 @@ target_compile_definitions(OBSTACLE PUBLIC
     JUCE_VST3_CAN_REPLACE_VST2=0
 )
 
+# ── WebView2 on Windows (required for withResourceProvider) ──────────────────
+if(WIN32 AND DEFINED WEBVIEW2_PATH)
+    target_compile_definitions(OBSTACLE PRIVATE JUCE_USE_WIN_WEBVIEW2=1)
+    target_include_directories(OBSTACLE PRIVATE "${WEBVIEW2_PATH}/build/native/include")
+endif()
+
 target_link_libraries(OBSTACLE PRIVATE
     ObstacleBinaryData
     juce::juce_audio_utils
