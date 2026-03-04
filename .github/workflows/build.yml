@@ -1,8 +1,9 @@
-name: Build
+name: Build & Release
 
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   workflow_dispatch:
 
 jobs:
@@ -17,17 +18,18 @@ jobs:
       - name: Build
         run: cmake --build build --config Release -j4
 
-      - name: Upload VST3
-        uses: actions/upload-artifact@v4
-        with:
-          name: Obstacle-Windows-VST3
-          path: build/OBSTACLE_artefacts/Release/VST3/
+      - name: Zip artifacts
+        run: |
+          Compress-Archive -Path build/OBSTACLE_artefacts/Release/VST3/* -DestinationPath Obstacle-Windows-VST3.zip
+          Compress-Archive -Path build/OBSTACLE_artefacts/Release/Standalone/* -DestinationPath Obstacle-Windows-Standalone.zip
 
-      - name: Upload Standalone
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Obstacle-Windows-Standalone
-          path: build/OBSTACLE_artefacts/Release/Standalone/
+          name: Obstacle-Windows
+          path: |
+            Obstacle-Windows-VST3.zip
+            Obstacle-Windows-Standalone.zip
 
   build-macos:
     runs-on: macos-latest
@@ -40,11 +42,42 @@ jobs:
       - name: Build
         run: cmake --build build --config Release -j4
 
-      - name: Upload VST3 + AU
+      - name: Zip artifacts
+        run: |
+          zip -r Obstacle-macOS-VST3.zip      build/OBSTACLE_artefacts/Release/VST3/
+          zip -r Obstacle-macOS-AU.zip        build/OBSTACLE_artefacts/Release/AU/
+          zip -r Obstacle-macOS-Standalone.zip build/OBSTACLE_artefacts/Release/Standalone/
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Obstacle-macOS
           path: |
-            build/OBSTACLE_artefacts/Release/VST3/
-            build/OBSTACLE_artefacts/Release/AU/
-            build/OBSTACLE_artefacts/Release/Standalone/
+            Obstacle-macOS-VST3.zip
+            Obstacle-macOS-AU.zip
+            Obstacle-macOS-Standalone.zip
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: Obstacle-Windows
+          path: dist/
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: Obstacle-macOS
+          path: dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/**
+          generate_release_notes: true
