@@ -8,9 +8,9 @@ A 6-track, 16-step drum machine and melodic sequencer built with JUCE 8. Inspire
 
 ## 📦 Download (Prebuilt Release)
 
-👉 https://github.com/laurentcbn/obstacle/releases/tag/v1.2.0
+👉 https://github.com/laurentcbn/obstacle/releases/tag/v1.5.0
 
-1. Download **`OBSTACLE-macOS-v1.2.0.zip`**
+1. Download **`OBSTACLE-macOS-v1.5.0.zip`**
 2. Extract the archive
 3. Install the Standalone app or AU plugin (see *Install* section below)
 
