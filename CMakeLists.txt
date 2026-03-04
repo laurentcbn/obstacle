@@ -14,11 +14,18 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(JUCE)
 
+# ── Formats: AU is macOS only, add VST3 for Windows ──────────────────────────
+if(APPLE)
+    set(PLUGIN_FORMATS VST3 AU Standalone)
+else()
+    set(PLUGIN_FORMATS VST3 Standalone)
+endif()
+
 # ── Plugin target ─────────────────────────────────────────────────────────────
 juce_add_plugin(OBSTACLE
     PLUGIN_MANUFACTURER_CODE  Fred
     PLUGIN_CODE               Obst
-    FORMATS                   AU Standalone
+    FORMATS                   ${PLUGIN_FORMATS}
     PRODUCT_NAME              "OBSTACLE"
     COMPANY_NAME              "Fred"
     BUNDLE_ID                 "com.fred.obstacle"
