@@ -9,7 +9,7 @@ include(FetchContent)
 FetchContent_Declare(
     JUCE
     GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
-    GIT_TAG        8.0.4
+    GIT_TAG        8.0.12
     GIT_SHALLOW    TRUE
 )
 FetchContent_MakeAvailable(JUCE)
@@ -41,6 +41,9 @@ juce_add_plugin(OBSTACLE
 
 juce_generate_juce_header(OBSTACLE)
 
+# ── Embed ui.html as BinaryData (avoids MSVC string literal size limit) ───────
+juce_add_binary_data(ObstacleBinaryData SOURCES Source/ui.html)
+
 target_sources(OBSTACLE PRIVATE
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
@@ -55,6 +58,7 @@ target_compile_definitions(OBSTACLE PUBLIC
 )
 
 target_link_libraries(OBSTACLE PRIVATE
+    ObstacleBinaryData
     juce::juce_audio_utils
     juce::juce_dsp
     juce::juce_gui_basics
